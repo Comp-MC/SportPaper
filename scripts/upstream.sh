@@ -1,7 +1,4 @@
 #!/bin/bash
-
-set -e
-
 # get base dir regardless of execution location
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
