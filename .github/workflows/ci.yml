@@ -1,26 +1,24 @@
-name: Build
+name: CI
 
 on:
   push:
     paths:
       - patches/**.patch
-      - scripts/**.sh
       - pom.xml
       - settings.xml
   pull_request:
     paths:
       - patches/**.patch
-      - scripts/**.sh
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build (Java ${{ matrix.java }})
+    permissions:
+      contents: read
     strategy:
       matrix:
         java:
           - "8"
-          - "17"
     runs-on: ubuntu-latest
     steps:
       - id: checkout
@@ -45,14 +43,21 @@ jobs:
         name: Upload SportPaper
         uses: actions/upload-artifact@v3
         with:
-          name: SportPaper-Java-${{ matrix.java }}.jar
+          name: SportPaper.jar
           path: SportPaper-Server/target/sportpaper-*.jar
           if-no-files-found: error
+  deploy:
+    permissions:
+      contents: read
+      packages: write
+    need: build
+    if: |
+      github.repository_owner == 'Electroid' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
       - id: deploy
-        if: |
-          github.repository_owner == 'Electroid' &&
-          github.ref == 'refs/heads/main' &&
-          matrix.java == '8'
         name: Deploy SportPaper
         run: mvn --batch-mode deploy
         env:
