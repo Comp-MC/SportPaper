@@ -1,0 +1,60 @@
+From bca366f2a4ed49ada403e19373383e7f39c93e5d Mon Sep 17 00:00:00 2001
+From: Jason Ho <git@hogt.me>
+Date: Sat, 24 Aug 2024 23:01:02 -0700
+Subject: [PATCH] Fix JDK12+ final field modification issues
+
+
+diff --git a/src/main/java/org/github/paperspigot/PaperSpigotConfig.java b/src/main/java/org/github/paperspigot/PaperSpigotConfig.java
+index 8cdcaf3a..6bdf4134 100644
+--- a/src/main/java/org/github/paperspigot/PaperSpigotConfig.java
++++ b/src/main/java/org/github/paperspigot/PaperSpigotConfig.java
+@@ -5,6 +5,7 @@ import java.lang.reflect.Modifier;
+ import java.util.*;
+ import java.util.logging.Level;
+ 
++import app.ashcon.sportpaper.api.reflection.ReflectionUtils;
+ import app.ashcon.sportpaper.server.KnockbackModificationCommand;
+ import net.minecraft.server.Items;
+ import org.apache.commons.lang.StringUtils;
+@@ -162,33 +163,22 @@ public class PaperSpigotConfig
+         stackableWaterBuckets = getBoolean( "stackable-buckets.water", false );
+         stackableMilkBuckets = getBoolean( "stackable-buckets.milk", false );
+ 
+-        Field maxStack;
+-
+-        try {
+-            maxStack = Material.class.getDeclaredField("maxStack");
+-            maxStack.setAccessible(true);
+-
+-            Field modifiers = Field.class.getDeclaredField("modifiers");
+-            modifiers.setAccessible(true);
+-            modifiers.setInt(maxStack, maxStack.getModifiers() & ~Modifier.FINAL);
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-            return;
+-        }
++        Class<Material> materialClass = Material.class;
++        String maxStackFieldName = "maxStack";
+ 
+         try {
+             if (stackableLavaBuckets) {
+-                maxStack.set(Material.LAVA_BUCKET, Material.BUCKET.getMaxStackSize());
++                ReflectionUtils.modifyFinal(materialClass, maxStackFieldName, Material.LAVA_BUCKET, Material.BUCKET.getMaxStackSize());
+                 Items.LAVA_BUCKET.c(Material.BUCKET.getMaxStackSize());
+             }
+ 
+             if (stackableWaterBuckets) {
+-                maxStack.set(Material.WATER_BUCKET, Material.BUCKET.getMaxStackSize());
++                ReflectionUtils.modifyFinal(materialClass, maxStackFieldName, Material.WATER_BUCKET, Material.BUCKET.getMaxStackSize());
+                 Items.WATER_BUCKET.c(Material.BUCKET.getMaxStackSize());
+             }
+ 
+             if (stackableMilkBuckets) {
+-                maxStack.set(Material.MILK_BUCKET, Material.BUCKET.getMaxStackSize());
++                ReflectionUtils.modifyFinal(materialClass, maxStackFieldName, Material.MILK_BUCKET, Material.BUCKET.getMaxStackSize());
+                 Items.MILK_BUCKET.c(Material.BUCKET.getMaxStackSize());
+             }
+         } catch (Exception e) {
+-- 
+2.39.5 (Apple Git-154)
+

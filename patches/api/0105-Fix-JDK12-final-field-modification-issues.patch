@@ -1,0 +1,65 @@
+From fa5d9f5884279a1dbbe301a165e5e769d64d82ff Mon Sep 17 00:00:00 2001
+From: Jason Ho <git@hogt.me>
+Date: Sat, 24 Aug 2024 23:00:45 -0700
+Subject: [PATCH] Fix JDK12+ final field modification issues
+
+
+diff --git a/src/main/java/app/ashcon/sportpaper/api/reflection/ReflectionUtils.java b/src/main/java/app/ashcon/sportpaper/api/reflection/ReflectionUtils.java
+new file mode 100644
+index 00000000..88b50515
+--- /dev/null
++++ b/src/main/java/app/ashcon/sportpaper/api/reflection/ReflectionUtils.java
+@@ -0,0 +1,50 @@
++package app.ashcon.sportpaper.api.reflection;
++
++import jdk.internal.misc.Unsafe;
++
++import java.lang.reflect.Field;
++import java.lang.reflect.Modifier;
++
++public class ReflectionUtils {
++
++    static final double JDK12 = 56.0;
++
++    public static Double getJavaVersion() {
++        String version = System.getProperty("java.class.version");
++        return Double.parseDouble(version);
++    }
++
++    public static void modifyFinal(Class<?> clazz, String fieldName, Object instance, Object value) throws Exception {
++        Double javaVersion = getJavaVersion();
++        if (javaVersion < JDK12) {
++            jdk8_modifyFinal(clazz, fieldName, instance, value);
++        } else {
++            try {
++                jdklatest_modifyFinal(clazz, fieldName, instance, value);
++            } catch(Exception e) {
++                throw new RuntimeException("ReflectionUtils: " +
++                        "Unsupported Java version, cannot perform reflections on version " + javaVersion, e);
++            }
++        }
++    }
++
++    public static void jdklatest_modifyFinal(Class<?> clazz, String fieldName, Object instance, Object value) throws NoSuchFieldException, IllegalAccessException {
++        final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
++        unsafeField.setAccessible(true);
++        final Unsafe unsafe = (Unsafe) unsafeField.get(null);
++
++        final Field field = clazz.getDeclaredField(fieldName);
++        unsafe.putObject(instance, unsafe.objectFieldOffset(field), value);
++    }
++
++    public static void jdk8_modifyFinal(Class<?> clazz, String fieldName, Object instance, Object value) throws NoSuchFieldException, IllegalAccessException {
++        Field field = clazz.getDeclaredField(fieldName);
++        field.setAccessible(true);
++
++        Field modifiers = Field.class.getDeclaredField("modifiers");
++        modifiers.setAccessible(true);
++        modifiers.setInt(field, field.getModifiers() & ~Modifier.FINAL);
++
++        field.set(instance, value);
++    }
++}
+-- 
+2.39.5 (Apple Git-154)
+
