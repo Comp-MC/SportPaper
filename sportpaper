@@ -96,6 +96,9 @@ case "$1" in
         rm -rf SportPaper-API
         rm -rf SportPaper-Server
         rm -rf base
+        git submodule deinit --all -f
+        git reset --hard
+        git clean -fd
         echo "Cleaned build files"
     ;;
     "con" | "continue")
