@@ -1,32 +1,33 @@
-name: CI
+name: Build
 
 on:
   push:
     paths:
       - patches/**.patch
+      - scripts/**.sh
       - pom.xml
       - settings.xml
   pull_request:
     paths:
       - patches/**.patch
+      - scripts/**.sh
   workflow_dispatch:
 
 jobs:
   build:
-    permissions:
-      contents: read
+    name: Build (Java ${{ matrix.java }})
     strategy:
       matrix:
         java:
-          - "8"
+          - "21"
     runs-on: ubuntu-latest
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - id: setup-java
         name: Setup Java ${{ matrix.java }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ matrix.java }}
           distribution: temurin
@@ -36,28 +37,24 @@ jobs:
         run: |
           git config --global user.email "ci@github.com"
           git config --global user.name "GitHub CI"
+      - id: setup-maven
+        name: Setup Maven
+        shell: bash
+        run: mkdir .mvn && cp .github/maven.config .mvn
       - id: build
         name: Build SportPaper
-        run: bash sportpaper build
+        run: bash sportpaper jar
       - id: upload
         name: Upload SportPaper
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SportPaper.jar
-          path: SportPaper-Server/target/sportpaper-*.jar
+          path: sportpaper.jar
           if-no-files-found: error
-  deploy:
-    permissions:
-      contents: read
-      packages: write
-    need: build
-    if: |
-      github.repository_owner == 'Electroid' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
       - id: deploy
+        if: |
+          github.repository_owner == 'Electroid' &&
+          github.ref == 'refs/heads/main'
         name: Deploy SportPaper
         run: mvn --batch-mode deploy
         env:
